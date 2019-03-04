@@ -2,38 +2,57 @@ package helpers
 
 import (
 	"fmt"
-	"strings"
 
-	"github.com/byuoitav/common/log"
 	"github.com/byuoitav/common/nerr"
 )
 
-//SwitchInput takes the IP address, the output and the input from the user and
-//switches the input to the one requested
-
-func SwitchInput(address, ouput, input string) (string, *nerr.E) {
-	//establish telnet connection to device
-	conn, err := getConnection(address, true)
-
+//Turn the light on
+func LightOn(ipaddress, light string) (string, *nerr.E) {
+	Conn, err := MakeConnection(ipaddress)
 	if err != nil {
-		log.L.Errorf("Failed to establish connection with %s : %s", address, err.Error())
-		return "", nerr.Translate(err).Add("Telnet connection failed")
+		return "", nerr.Create(fmt.Sprintf("%v", err), "")
 	}
-
-	//execute telnet command to switch input
-	conn.Write([]byte("x" + input + "AVx" + ouput + "\r\n"))
-	b, err := readUntil(CARRIAGE_RETURN, conn, 10)
+	defer Conn.Close()
+	msg := fmt.Sprintf("{\"SetCh%s\":\"ON\",\"SetCh%s\":100}", light, light)
+	fmt.Printf("Message: %s", msg)
+	buf := []byte(msg)
+	_, err = Conn.Write(buf)
 	if err != nil {
-		return "", nerr.Translate(err).Add("failed to read from connection")
+		fmt.Println(msg, err)
 	}
+	return "", nil
+}
 
-	if strings.Contains(string(b), "FAILED") {
-		return "", nerr.Create("Input or Output is out of range", "Error")
+//Turn the light off
+func LightOff(ipaddress, light string) (string, *nerr.E) {
+	Conn, err := MakeConnection(ipaddress)
+	if err != nil {
+		return "", nerr.Create(fmt.Sprintf("%v", err), "")
 	}
+	defer Conn.Close()
+	msg := fmt.Sprintf("{\"SetCh%s\":\"OFF\",\"SetCh%s\":100}", light, light)
+	fmt.Printf("Message: %s", msg)
+	buf := []byte(msg)
+	_, err = Conn.Write(buf)
+	if err != nil {
+		fmt.Println(msg, err)
+	}
+	return "", nil
+}
 
-	response := strings.Split(fmt.Sprintf("%s", b), "AV")
-	test := strings.Split(fmt.Sprintf("%s", response), "x")
-	log.L.Infof("test: %s", test)
-	defer conn.Close()
-	return fmt.Sprintf("%s", input), nil
+//This is the Dim
+func Dim(ipaddress, light, dimlevel string) (string, *nerr.E) {
+	Conn, err := MakeConnection(ipaddress)
+	if err != nil {
+		return "", nerr.Create(fmt.Sprintf("%v", err), "")
+	}
+	defer Conn.Close()
+	msg := fmt.Sprintf("{\"SetCh%s\":\"ON\",\"SetCh%s\":%s}", light, light, dimlevel)
+	fmt.Printf("Message: %s", msg)
+	buf := []byte(msg)
+	_, err = Conn.Write(buf)
+	if err != nil {
+		fmt.Println(msg, err)
+	}
+	return "", nil
 }
